@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline Dashboard — Sales Intelligence</title>
+  <meta name="description" content="AE-level sales pipeline dashboard with Salesforce data upload, funnel snapshot, pipeline analytics, and deal commit tracking.">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════════════════
+       UPLOAD OVERLAY  (shown on first visit / new upload)
+       ════════════════════════════════════════════════════ -->
+  <div id="upload-overlay" aria-label="Upload data">
+    <div class="upload-panel">
+      <div class="upload-logo">Pipeline Dashboard</div>
+      <div class="upload-tagline">Sales Intelligence · Powered by Salesforce Data</div>
+
+      <div id="drop-zone" role="button" tabindex="0"
+           aria-label="Click or drag and drop an Excel file to upload">
+        <span class="drop-icon">📊</span>
+        <div class="drop-title">Drop your Salesforce export here</div>
+        <div class="drop-sub">
+          or <strong>click to browse</strong> · Accepts <strong>.xlsx</strong> / <strong>.xls</strong>
+        </div>
+      </div>
+      <input type="file" id="file-input" accept=".xlsx,.xls" aria-hidden="true">
+
+      <div id="upload-status" class="upload-status" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════
+       FIREBASE SETUP MODAL
+       ════════════════════════════════════════════════════ -->
+  <div id="firebase-modal" role="dialog" aria-labelledby="fb-modal-title" aria-modal="true">
+    <div class="modal-panel">
+      <button id="fb-modal-close" class="modal-close" aria-label="Close">&times;</button>
+
+      <div class="modal-title" id="fb-modal-title">⚡ Firebase Setup</div>
+      <div class="modal-sub">
+        Firebase enables <strong>real-time Deal Table sync</strong> across all users and persists week-over-week history across devices.<br><br>
+        1. Go to <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a><br>
+        2. Create a project → Add a Web App<br>
+        3. Enable <strong>Realtime Database</strong> (Spark free tier)<br>
+        4. Copy your <code>firebaseConfig</code> object and paste it below as JSON.
+      </div>
+
+      <label class="modal-label" for="fb-config-input">Firebase Config JSON</label>
+      <textarea id="fb-config-input" spellcheck="false" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "databaseURL": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+
+      <div class="modal-actions">
+        <button id="fb-save-btn" class="btn btn--primary">Connect Firebase</button>
+        <button id="fb-clear-btn" class="btn btn--ghost btn--sm">Clear Config</button>
+        <span id="fb-status" class="fb-status" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════
+       MAIN APP
+       ════════════════════════════════════════════════════ -->
+  <div id="app" class="hidden">
+
+    <!-- Header -->
+    <header class="app-header" role="banner">
+      <div class="header-brand">
+        <div class="brand-icon" aria-hidden="true">📈</div>
+        <span class="brand-name">Pipeline Dashboard</span>
+      </div>
+
+      <div class="header-divider" aria-hidden="true"></div>
+
+      <div class="ae-selector-wrap">
+        <label class="ae-selector-label" for="ae-selector">AE</label>
+        <select id="ae-selector" aria-label="Select Account Executive"></select>
+      </div>
+
+      <div class="header-actions">
+        <div id="week-info" title="Data upload date" aria-live="polite"></div>
+        <button id="upload-new-btn" class="btn btn--upload btn--sm">⬆ Upload Data</button>
+        <button id="firebase-setup-btn" class="btn btn--firebase btn--sm" title="Configure Firebase for real-time sync">⚡ Firebase</button>
+      </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav" role="tablist" aria-label="Dashboard sections">
+      <button class="tab-btn active" data-tab="funnel" role="tab" aria-selected="true"  aria-controls="tab-funnel"   id="btn-funnel">🎯 Funnel Snapshot</button>
+      <button class="tab-btn"        data-tab="pipeline" role="tab" aria-selected="false" aria-controls="tab-pipeline" id="btn-pipeline">📊 Pipeline</button>
+      <button class="tab-btn"        data-tab="deals" role="tab" aria-selected="false" aria-controls="tab-deals"    id="btn-deals">📌 Deal Table</button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="app-main" role="main">
+
+      <!-- Tab: Funnel Snapshot -->
+      <div id="tab-funnel" class="tab-content active"
+           role="tabpanel" aria-labelledby="btn-funnel">
+        <div class="empty-state">Upload data to view Funnel Snapshot</div>
+      </div>
+
+      <!-- Tab: Pipeline -->
+      <div id="tab-pipeline" class="tab-content"
+           role="tabpanel" aria-labelledby="btn-pipeline">
+        <div class="empty-state">Upload data to view Pipeline</div>
+      </div>
+
+      <!-- Tab: Deal Table -->
+      <div id="tab-deals" class="tab-content"
+           role="tabpanel" aria-labelledby="btn-deals">
+        <div class="empty-state">Upload data to view Deal Table</div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════
+       CDN LIBRARIES
+       ════════════════════════════════════════════════════ -->
+
+  <!-- SheetJS — Excel parsing -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  <!-- Firebase (compat SDK — works without bundler) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <!-- App Scripts (load order matters) -->
+  <script src="js/config.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/funnel.js"></script>
+  <script src="js/pipeline.js"></script>
+  <script src="js/dealTable.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
